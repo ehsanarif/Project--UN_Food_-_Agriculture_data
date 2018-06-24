@@ -1,0 +1,149 @@
+---
+title: "R Notebook on United Nations database on Food and Agriculture Organization(FAO) [(1961-2013)]"
+output: html_notebook
+---
+Importing the libraries
+```{r}
+library("readr") 
+library('tidyr') 
+library('dplyr') 
+library('ggplot2')
+library('ggthemes')
+library('corrplot') 
+library('lubridate') 
+library('purrr') 
+library('cowplot')
+library('maps')
+library('viridis')
+library('treemap')
+library('leaflet')
+library('dygraphs')
+library('graphics')
+library('forecast')
+library('xts')
+library('IRdisplay')
+
+```
+Uploading the csv FAO datset
+
+```{r}
+data = read.csv("../UNFAO.csv")
+head(data)
+
+```
+A sneak peak in the dataset
+```{r}
+str(data)
+summary(data)
+```
+Let's plot the dataset accordingly!
+
+```{r}
+options(repr.plot.width=15, repr.plot.height=4)
+data = mutate(data, Total=apply(data[11:63], 1, sum, na.rm = T))
+data = mutate(data, last5=apply(data[58:63], 1, sum, na.rm = T))
+
+p1 = data %>% group_by(Area.Abbreviation, Element) %>% filter(Element == 'Food')%>% 
+  summarise(TFO = sum(Total)) %>% ungroup()%>%mutate(pct = prop.table(TFO)*100)%>%
+  top_n(10, wt = pct)%>%
+  ggplot(aes(x = reorder(Area.Abbreviation, -pct), y = pct)) + 
+  geom_bar(stat = 'identity', fill = "green", aes(color = I('black')), size = 0.1) + ggtitle("Country wise Food Production since 1961") +
+  geom_text(aes(label = sprintf("%.2f%%", pct)), hjust = 0.5,
+            vjust = -0.5, size = 3)+ theme_economist()+ xlab("Country") + ylab("Percentage of Production")
+
+plot(p1)
+```
+
+
+```{r}
+p2 = data %>% group_by(Area.Abbreviation, Element) %>%filter(Element == 'Food')%>% 
+  summarise(TFO = sum(last5)) %>% ungroup()%>%mutate(pct = prop.table(TFO)*100)%>%
+  top_n(10, wt = pct)%>%
+  ggplot(aes(x = reorder(Area.Abbreviation, -pct), y = pct)) + 
+  geom_bar(stat = 'identity', fill = "green", aes(color = I('gray')), size = 0.1) + ggtitle("Country wise Food Production since 2008-13") +
+  geom_text(aes(label = sprintf("%.2f%%", pct)), hjust = 0.5,
+            vjust = -0.5, size =3)+ theme_economist()+ xlab("Country") + ylab("Percentage of Production")
+
+plot(p2)
+
+
+
+```
+
+
+```{r}
+p3 = data %>% group_by(Area.Abbreviation, Element) %>%filter(Element == 'Feed')%>% 
+  summarise(TFE = sum(Total)) %>% ungroup()%>%mutate(pct = prop.table(TFE)*100)%>%
+  top_n(10, wt = pct)%>%
+  ggplot(aes(x = reorder(Area.Abbreviation, -pct), y = pct)) + 
+  geom_bar(stat = 'identity', fill = "lightblue", aes(color = I('black')), size = 0.1) + ggtitle("Country wise Feed Production since 1961")+
+  geom_text(aes(label = sprintf("%.2f%%", pct)), 
+            vjust = -.5, size = 3)+ theme_economist()+ xlab("Country") + ylab("Percentage of Production")
+plot_grid(p3)
+
+```
+
+
+```{r}
+p4 = data %>% group_by(Area.Abbreviation, Element) %>%filter(Element == 'Feed')%>% 
+  summarise(TFE = sum(last5)) %>% ungroup()%>%mutate(pct = prop.table(TFE)*100)%>%
+  top_n(10, wt = pct)%>%
+  ggplot(aes(x = reorder(Area.Abbreviation, -pct), y = pct)) + 
+  geom_bar(stat = 'identity', fill = "lightblue", aes(color = I('black')), size = 0.1) + ggtitle("Country wise Feed Production since 2008-13") +
+  geom_text(aes(label = sprintf("%.2f%%", pct)), 
+            vjust = -.5, size = 3)+ theme_economist()+ xlab("Country") + ylab("Percentage of Production")
+
+plot(p4)
+```
+
+
+```{r}
+
+p5 = data %>% group_by(Item) %>%filter(Element == 'Food')%>% 
+  summarise(TFO = sum(Total)) %>% ungroup()%>%mutate(pct = prop.table(TFO)*100)%>%
+  top_n(10, wt = pct)%>%
+  ggplot(aes(x = reorder(Item, pct), y = pct)) + ggtitle("Food Item wise Production since 1961") +
+  geom_bar(stat = 'identity', fill = "#999999", aes(color = I('black')), size = 0.1) + coord_flip()+
+  geom_text(aes(label = sprintf("%.2f%%", pct)), hjust = 1.2,
+            vjust = -0.5, size = 3)+ theme_economist()+ xlab("Food Item") + ylab("Percentage of Production")
+plot(p5)
+```
+
+
+
+```{r}
+p6 = data %>% group_by(Item) %>%filter(Element == 'Food')%>% 
+  summarise(TFO = sum(last5)) %>% ungroup()%>%mutate(pct = prop.table(TFO)*100)%>%
+  top_n(10, wt = pct)%>%
+  ggplot(aes(x = reorder(Item, pct), y = pct)) + ggtitle("Food Item wise Production since 2008-13") +
+  geom_bar(stat = 'identity', fill = "#999999", aes(color = I('black')), size = 0.1) + coord_flip()+ 
+  geom_text(aes(label = sprintf("%.2f%%", pct)), hjust = 1.2,
+            vjust = -0.5, size =3)+ theme_economist() + xlab("Food Item") + ylab("Percentage of Production")
+
+plot(p6)
+```
+
+
+```{r fig.width=13.5}
+
+p7 = data %>% group_by(Item) %>%filter(Element == 'Feed')%>% 
+  summarise(TFO = sum(Total)) %>% ungroup()%>%mutate(pct = prop.table(TFO)*100)%>%
+  top_n(10, wt = pct)%>%
+  ggplot(aes(x = reorder(Item, pct), y = pct)) + 
+  geom_bar(stat = 'identity', fill = "#CC6666", aes(color = I('black')), size = 0.1) + coord_flip()+
+  geom_text(aes(label = sprintf("%.2f%%", pct)), hjust = 0.01,
+            vjust = -0.5, size = 3)+ theme_economist()+ xlab("Food Item") + ylab("Feed Item production since 1961")
+
+p8 = data %>% group_by(Item) %>%filter(Element == 'Feed')%>% 
+  summarise(TFO = sum(last5)) %>% ungroup()%>%mutate(pct = prop.table(TFO)*100)%>%
+  top_n(10, wt = pct)%>%
+  ggplot(aes(x = reorder(Item, pct), y = pct)) + 
+  geom_bar(stat = 'identity', fill = "#CC6666", aes(color = I('black')), size = 0.1) + coord_flip()+
+  geom_text(aes(label = sprintf("%.2f%%", pct)), hjust = 0.01,
+            vjust = -0.5, size =3)+ theme_economist()+ xlab("Food Item") + ylab("Feed Item production since 2008-13")
+
+
+plot_grid(p7,p8, align = "v")
+
+```
+
